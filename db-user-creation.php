@@ -1,24 +1,37 @@
 <?php
 
  //for local env testing
-                    if(env('APP_ENV')=="local"){
-                        $connexn_db_local =  mysqli_connect($dbhost, 'root', '');
-                      
-                      
-
-                        $queries = array(
-                            "CREATE DATABASE `$dbname` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
-                            "CREATE USER '$dbuser'@'$dbhost' IDENTIFIED BY '$dbpsw'",
-                            "GRANT USAGE ON * . * TO '$dbuser'@'$dbhost' IDENTIFIED BY '$dbpsw' WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0",
-                            "GRANT SELECT , INSERT , UPDATE, DELETE ON `$dbname` . * TO '$dbuser'@'$dbhost'",
-                            "FLUSH PRIVILEGES"
-                        );
-
-                        foreach ($queries as $query) {
-                            echo 'Executing query: "' . htmlentities($query) . '" ... ';
-                            $rs = mysqli_query($connexn_db_local,$query);
-                            echo ($rs ? 'OK' : 'FAIL') . '<br/><br/>';
+ $app_environment = env('APP_ENV');
+                    if($app_environment=="local"){
+                    
+                        //echo '$app_environment'. $app_environment;
+                        if($app_environment == "local"){
+                            DB::statement("CREATE DATABASE `$dbname`");
+                            DB::statement("CREATE USER '$dbuser'@'localhost' IDENTIFIED BY '$dbpsw' ");
+                            DB::statement("GRANT ALL PRIVILEGES ON *.* TO '$dbuser'@'localhost'");
+                            DB::statement("FLUSH PRIVILEGES");
+                            
                         }
+                                           
+                      
 
-                        $connexn_db_local->close();
+                        $conn = mysqli_connect($dbhost, $dbuser, $dbpsw, $dbname);
+                            $query = '';
+                            $sqlScript = file(base_path() . '/dms/fileeazy_dms.sql');
+                            foreach ($sqlScript as $line) {
+
+                                $startWith = substr(trim($line), 0, 2);
+                                $endWith = substr(trim($line), -1, 1);
+
+                                if (empty($line) || $startWith == '--' || $startWith == '/*' || $startWith == '//') {
+                                    continue;
+                                }
+
+                                $query = $query . $line;
+                                if ($endWith == ';') {
+                                    mysqli_query($conn, $query) or die('<div class="error-response sql-import-response">Problem in executing the SQL query <b>' . $query . '</b></div>');
+                                    $query = '';
+                                }
+                            }
+                            echo '<div class="success-response sql-import-response">SQL file imported successfully</div>';
                     }
